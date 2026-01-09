@@ -31,7 +31,7 @@ class IKEv2Scanner:
 
     async def scan(self):
         """Performs IKEv2 scan by sending an IKE_SA_INIT request."""
-        logger.info(f"Scanning {self.target}:{self.port} for IKEv2...")
+        logger.debug(f"Sending IKEv2 IKE_SA_INIT request to {self.target}:{self.port}")
         
         packet = self.create_ike_sa_init_packet()
         
@@ -40,27 +40,27 @@ class IKEv2Scanner:
             sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             sock.setblocking(False)
             
-            await loop.sock_sendto(sock, bytes(packet), (self.target, self.port))
+            sock.connect((self.target, self.port))
             
-            # Use run_in_executor for recvfrom as it's typically blocking even with setblocking(False) on some OS
-            # or use wait_for with loop.sock_recvfrom if available and preferred.
-            # Here we'll stick to a simple wait approach.
+            await loop.sock_sendall(sock, bytes(packet))
             
-            # Note: Scapy's IKEv2 is more complex. We'll simplify for the initial scanner skeleton.
-            data, addr = await loop.run_in_executor(None, sock.recvfrom, 4096)
+            data = await asyncio.wait_for(loop.sock_recv(sock, 4096), timeout=3.0)
             
             if data:
                 response = IKEv2(data)
-                logger.info(f"[green]Received response from {addr}[/green]")
+                logger.debug(f"Received IKEv2 response: {response.summary()}")
                 return {
                     "protocol": "IKEv2",
                     "status": "Open",
                     "response": response.summary(),
-                    "details": "IKEv2 service detected"
+                    "details": "IKEv2/IPsec service detected"
                 }
-        except socket.timeout:
-            logger.warning(f"Timeout while scanning {self.target} for IKEv2.")
+        except (asyncio.TimeoutError, socket.timeout):
+            logger.debug(f"IKEv2 scan timeout for {self.target}")
         except Exception as e:
-            logger.debug(f"IKEv2 scan detail: {str(e)}")
+            logger.debug(f"IKEv2 scan error: {str(e)}")
+        finally:
+            if 'sock' in locals():
+                sock.close()
         
         return {"protocol": "IKEv2", "status": "Closed/Filtered"}

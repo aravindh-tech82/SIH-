@@ -38,35 +38,40 @@ class IKEv1Scanner:
 
     async def scan(self):
         """Performs IKEv1 scan by sending an SA proposal."""
-        logger.info(f"Scanning {self.target}:{self.port} for IKEv1...")
+        logger.debug(f"Sending IKEv1 SA proposal to {self.target}:{self.port}")
         
         packet = self.create_sa_packet()
         
         try:
-            # We use a simple UDP socket for the scan to stay lightweight in the scanner
             loop = asyncio.get_event_loop()
             sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             sock.setblocking(False)
-            sock.settimeout(2)
             
-            await loop.sock_sendto(sock, bytes(packet), (self.target, self.port))
+            # Use connect for easier send/recv on the same address
+            sock.connect((self.target, self.port))
             
-            data, addr = await loop.run_in_executor(None, sock.recvfrom, 4096)
+            await loop.sock_sendall(sock, bytes(packet))
+            
+            # Wait for response with timeout
+            data = await asyncio.wait_for(loop.sock_recv(sock, 4096), timeout=3.0)
             
             if data:
                 response = ISAKMP(data)
-                logger.info(f"[green]Received response from {addr}[/green]")
+                logger.debug(f"Received IKEv1 response: {response.summary()}")
                 return {
                     "protocol": "IKEv1",
                     "status": "Open",
                     "response": response.summary(),
-                    "details": "IKEv1 service detected"
+                    "details": "IKEv1/ISAKMP service detected"
                 }
-        except socket.timeout:
-            logger.warning(f"Timeout while scanning {self.target} for IKEv1.")
+        except (asyncio.TimeoutError, socket.timeout):
+            logger.debug(f"IKEv1 scan timeout for {self.target}")
         except ConnectionRefusedError:
-            logger.error(f"Connection refused by {self.target} on port {self.port}.")
+            logger.debug(f"IKEv1 connection refused by {self.target}")
         except Exception as e:
-            logger.error(f"Error during IKEv1 scan: {str(e)}")
+            logger.debug(f"IKEv1 scan error: {str(e)}")
+        finally:
+            if 'sock' in locals():
+                sock.close()
         
         return {"protocol": "IKEv1", "status": "Closed/Filtered"}
