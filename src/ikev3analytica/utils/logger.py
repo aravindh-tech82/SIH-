@@ -7,7 +7,7 @@ from rich.text import Text
 
 console = Console()
 
-BANNER = """
+BANNER = r"""
 [bold cyan]
   ___ _  _______      _________              _       _   _             
  |_ _| |/ /  _\ \    / /___ / /_ _ __   __ _| | _   | |_(_) ___ __ _ 
@@ -17,7 +17,7 @@ BANNER = """
                                                                          
 [/bold cyan]
 [bold white]Modern IPsec/IKE Analysis & Enumeration Framework[/bold white]
-[italic blue]Versiyon 0.1.0 - Gelişmiş Güvenlik Analizi[/italic blue]
+[italic blue]Version 0.1.0 - Advanced Security Analysis[/italic blue]
 """
 
 def print_banner():

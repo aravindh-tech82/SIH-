@@ -1,4 +1,5 @@
-from scapy.all import IP, UDP, Raw, IKEv2, IKEv2_payload_SA, IKEv2_payload_Proposal, IKEv2_payload_Transform
+from scapy.all import IP, UDP, Raw
+from scapy.contrib.ikev2 import IKEv2, IKEv2_SA, IKEv2_Proposal, IKEv2_Transform
 from ikev3analytica.utils.logger import logger
 import socket
 import asyncio
@@ -13,20 +14,19 @@ class IKEv2Scanner:
     def create_ike_sa_init_packet(self):
         """Creates an IKEv2 IKE_SA_INIT request packet."""
         # Simple IKEv2 Proposal: AES-CBC-128, HMAC-SHA1-96, PRF-HMAC-SHA1, DH Group 2
-        trans1 = IKEv2_payload_Transform(transform_type="ENCAR", transform_id="AES_CBC", 
-                                        attributes=[("KeyLength", 128)])
-        trans2 = IKEv2_payload_Transform(transform_type="INTEG", transform_id="HMAC_SHA1_96")
-        trans3 = IKEv2_payload_Transform(transform_type="PRF", transform_id="PRF_HMAC_SHA1")
-        trans4 = IKEv2_payload_Transform(transform_type="D-H", transform_id="1024MODP")
+        trans1 = IKEv2_Transform(transform_type=1, transform_id=12, key_length=128)
+        trans2 = IKEv2_Transform(transform_type=3, transform_id=2)
+        trans3 = IKEv2_Transform(transform_type=2, transform_id=2)
+        trans4 = IKEv2_Transform(transform_type=4, transform_id=2)
         
-        prop = IKEv2_payload_Proposal(proposal_number=1, proto="IKEv2", trans_nb=4, 
-                                     trans=trans1/trans2/trans3/trans4)
+        prop = IKEv2_Proposal(proposal=1, proto=1, trans_nb=4, 
+                             trans=trans1/trans2/trans3/trans4)
         
-        sa = IKEv2_payload_SA(prop=prop)
+        sa = IKEv2_SA(prop=prop)
         
         i_spi = os.urandom(8)
         ikev2 = IKEv2(init_SPI=i_spi, resp_SPI=b"\x00"*8, next_payload="SA", 
-                     exch_type="IKE_SA_INIT", flags="Initiator") / sa
+                     exch_type=34, flags=8) / sa
         return ikev2
 
     async def scan(self):

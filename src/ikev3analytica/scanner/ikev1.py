@@ -1,4 +1,5 @@
-from scapy.all import IP, UDP, Raw, IKEv1, ISAKMP, ISAKMP_payload_SA, ISAKMP_payload_Proposal, ISAKMP_payload_Transform
+from scapy.all import IP, UDP, Raw
+from scapy.layers.isakmp import ISAKMP, ISAKMP_payload_SA, ISAKMP_payload_Proposal, ISAKMP_payload_Transform
 from ikev3analytica.utils.logger import logger
 import socket
 import asyncio
@@ -11,29 +12,32 @@ class IKEv1Scanner:
 
     def create_sa_packet(self):
         """Creates a basic IKEv1 SA proposal packet."""
-        # Define a simple transform: AES-CBC, SHA1, DH Group 2
-        trans = ISAKMP_payload_Transform(transform_number=1,
-                                         res=0,
-                                         transform_id="KEY_IKE",
-                                         SA_attr=[("Encryption", "AES-CBC"),
-                                                  ("KeyLength", 128),
-                                                  ("Hash", "SHA1"),
-                                                  ("GroupDesc", "1024MODP"),
-                                                  ("LifeType", "Seconds"),
-                                                  ("LifeDuration", 28800)])
+        # Define a simple transform: AES-CBC, SHA, DH Group 2
+        trans = ISAKMP_payload_Transform(
+            transform_count=1,
+            transform_id="KEY_IKE",
+            transforms=[
+                ("Encryption", "AES-CBC"),
+                ("KeyLength", 128),
+                ("Hash", "SHA"),
+                ("GroupDesc", "1024MODPgr"),
+                ("LifeType", "Seconds"),
+                ("LifeDuration", 28800)
+            ]
+        )
         
-        prop = ISAKMP_payload_Proposal(proposal_number=1,
-                                       proto="ISAKMP",
-                                       trans_nb=1,
-                                       trans=trans)
+        prop = ISAKMP_payload_Proposal(
+            proposal=1,
+            proto="ISAKMP",
+            trans_nb=1,
+            trans=trans
+        )
         
         sa = ISAKMP_payload_SA(prop=prop)
         
-        # Build the ISAKMP header
-        # i_cookie is a random initiator cookie
         import os
         i_cookie = os.urandom(8)
-        isakmp = ISAKMP(init_cookie=i_cookie, next_payload="SA", exch_type="identity prot.", flags=0) / sa
+        isakmp = ISAKMP(init_cookie=i_cookie, next_payload="SA", exch_type="identity protection", flags=0) / sa
         return isakmp
 
     async def scan(self):

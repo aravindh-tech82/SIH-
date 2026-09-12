@@ -1,4 +1,4 @@
-from scapy.all import IKEv1, ISAKMP, ISAKMP_payload_ID, ISAKMP_payload_Hash
+from scapy.layers.isakmp import ISAKMP, ISAKMP_payload_ID, ISAKMP_payload_Hash
 from ikev3analytica.utils.logger import logger
 import asyncio
 import socket
